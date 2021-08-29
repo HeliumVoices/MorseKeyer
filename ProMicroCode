@@ -1,0 +1,105 @@
+#include <Keyboard.h>
+byte button =9; // Set what port to look for input signal
+byte piezo =3;  // Set what port to send tone signal
+unsigned long startPressTime;
+unsigned long endPressTime;
+unsigned long pressDuration;
+unsigned long upDuration;
+unsigned long currentMillis;
+String morseString = "";
+byte charCheck = 0;
+byte dotDash;
+byte timerState;
+const long interval = 700;  // interval microseconds at which to evaluate morse into alphabet after button up
+ 
+// this function will be called to find what ASCII character to type
+// fairly inefficient way to do this but works for now since such a
+// limited character set
+void MorseLibrary(String& a){
+  char output = 0;
+  if (a == ".-")    output = 'a';
+  if (a == "-...")  output = 'b';
+  if (a == "-.-.")  output = 'c';
+  if (a == "-..")   output = 'd';
+  if (a == ".")     output = 'e';
+  if (a == "..-.")  output = 'f';
+  if (a == "--.")   output = 'g';
+  if (a == "....")  output = 'h';
+  if (a == "..")    output = 'i';
+  if (a == ".---")  output = 'j';
+  if (a == "-.-")   output = 'k';
+  if (a == ".-..")  output = 'l';
+  if (a == "--")    output = 'm';
+  if (a == "-.")    output = 'n';
+  if (a == "---")   output = 'o';
+  if (a == ".--.")  output = 'p';
+  if (a == "--.-")  output = 'q';
+  if (a == ".-.")   output = 'r';
+  if (a == "...")   output = 's';
+  if (a == "-")     output = 't';
+  if (a == "..-")   output = 'u';
+  if (a == "...-")  output = 'v';
+  if (a == ".--")   output = 'w';
+  if (a == "-..-")  output = 'x';
+  if (a == "-.--")  output = 'y';
+  if (a == "--..")  output = 'z';
+  if (a == "-----") output = '0';
+  if (a == ".----") output = '1';
+  if (a == "..---") output = '2';
+  if (a == "...--") output = '3';
+  if (a == "....-") output = '4';
+  if (a == ".....") output = '5';
+  if (a == "-....") output = '6';
+  if (a == "--...") output = '7';
+  if (a == "---..") output = '8';
+  if (a == "----.") output = '9';
+  if (a == "----")  output = KEY_BACKSPACE;
+  if (a == ".-.-.-")      output = '.';
+  if (a == "-.-.--")      output = '!';
+  Serial.println (output);
+  // return output;
+}
+
+void setup(){
+pinMode (button, INPUT_PULLUP);
+Serial.begin(9600);
+Keyboard.begin();
+}
+
+void loop(){
+  if (timerState == 0 && digitalRead(button) == LOW){ // button pressed
+    startPressTime = millis();
+    tone(piezo, 440);   // sends A440 to piezo speaker
+    timerState = 1;
+    charCheck = 0;
+    }
+  
+  if (timerState == 1 && digitalRead(button) == HIGH){ // button released
+    endPressTime = millis();
+    noTone(piezo);
+    pressDuration = endPressTime - startPressTime;
+    if (pressDuration > 10 && pressDuration <= 130){
+      dotDash = 0;
+      morseString += ".";  // add dot to string
+      Serial.print (" . ");
+    }
+    if (pressDuration > 130){
+      dotDash = 1;
+      morseString += "-";  // add dash to string
+      Serial.print(" - ");
+    }
+    timerState = 0;
+    charCheck = 1;
+    }
+
+currentMillis = millis();
+upDuration = currentMillis - endPressTime;
+
+    if (upDuration >= interval && charCheck == 1) {
+      Serial.print (" Code: ");
+      Serial.println (morseString);
+      MorseLibrary (morseString); // call the function that outputs character
+      charCheck = 0;  // reset this variable to 0 so that this if statement does not run again until next button release
+      morseString = "";   // reset string used for collecting morse
+  }
+}
