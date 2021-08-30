@@ -6,17 +6,24 @@ unsigned long endPressTime;
 unsigned long pressDuration;
 unsigned long upDuration;
 unsigned long currentMillis;
+unsigned long wordTimer;
+unsigned long wordDuration;
+byte ignoreSpace = 0;
 String morseString = "";
 byte charCheck = 0;
+byte morseChecked = 0;
 byte dotDash;
 byte timerState;
-const long interval = 700;  // interval microseconds at which to evaluate morse into alphabet after button up
+byte heldCommand = 0;
+const long letterInterval = 700;  // interval microseconds at which to evaluate morse into alphabet after button up
+const long wordInterval = 4000;  // interval microseconds at which time a space will be added
  
 // this function will be called to find what ASCII character to type
 // fairly inefficient way to do this but works for now since such a
 // limited character set
 void MorseLibrary(String& a){
   char output = 0;
+  ignoreSpace = 0;
   if (a == ".-")    output = 'a';
   if (a == "-...")  output = 'b';
   if (a == "-.-.")  output = 'c';
@@ -53,11 +60,62 @@ void MorseLibrary(String& a){
   if (a == "--...") output = '7';
   if (a == "---..") output = '8';
   if (a == "----.") output = '9';
-  if (a == "----")  output = KEY_BACKSPACE;
+  if (a == "----"){
+      output = KEY_BACKSPACE;
+      ignoreSpace = 1;    // no space character sent after backspace
+  }
   if (a == ".-.-.-")      output = '.';
   if (a == "-.-.--")      output = '!';
-  Serial.println (output);
-  // return output;
+// MOAAR
+if (a == "--..--")  output = ',';
+if (a == "..--..")  output = '?';
+if (a == ".----.")  output = 39;    // apostrophe
+if (a == "-..-.")  output = '/';
+if (a == "-.--.")  output = '(';
+if (a == "-.--.-")  output = ')';
+if (a == ".-...")  output = '&';
+if (a == "---...")  output = ':';
+if (a == "-.-.-.")  output = ';';
+if (a == "-...-")  output = '=';
+if (a == ".-.-.")  output = '+';
+if (a == "-....-")  output = '-';
+if (a == "..--.-")  output = '_';
+if (a == ".--.-.")  output = '@';
+if (a == ".-..-.")  output = '"';
+if (a == "...-.")  output = '*';
+if (a == "-.-.-")  output = 92;     // backslash
+if (a == "---.-")  output = '%';
+if (a == "--.-.")  output = '#';
+if (a == "--.-.-")  output = '|';
+if (a == "......")  output = '^';
+if (a == ".---..")  output = '~';
+if (a == "-..-.-")  output = '`';
+if (a == "...-..")  output = '$';
+if (a == ".--..")  output = '[';
+if (a == ".--..-")  output = ']';
+if (a == ".--.-")  output = '{';
+if (a == ".--.--")  output = '}';
+if (a == "-.---")  output = '<';
+if (a == "-.----")  output = '>';
+if (a == "..--")  output = ' ';
+if (a == ".-.-"){  
+  Keyboard.write(KEY_RETURN);       // Enter
+  ignoreSpace = 1;                  // no space character sent after enter
+  return;                           // exit this function
+  }
+if (a == "....-."){
+  Keyboard.press(KEY_LEFT_SHIFT);   // Shift - .press will hold key
+  ignoreSpace = 1;                  // no space
+  heldCommand = 1;
+  return;
+  }
+
+Serial.println (output);
+Keyboard.write (output);
+  if (heldCommand == 1){            // release held key if done last cycle
+    Keyboard.releaseAll();
+    heldCommand = 0;
+  }                      
 }
 
 void setup(){
@@ -69,7 +127,7 @@ Keyboard.begin();
 void loop(){
   if (timerState == 0 && digitalRead(button) == LOW){ // button pressed
     startPressTime = millis();
-    tone(piezo, 440);   // sends A440 to piezo speaker
+    tone(piezo, 840);   // sends A440 to piezo speaker
     timerState = 1;
     charCheck = 0;
     }
@@ -78,12 +136,12 @@ void loop(){
     endPressTime = millis();
     noTone(piezo);
     pressDuration = endPressTime - startPressTime;
-    if (pressDuration > 10 && pressDuration <= 130){
+    if (pressDuration > 10 && pressDuration <= 200){
       dotDash = 0;
       morseString += ".";  // add dot to string
       Serial.print (" . ");
     }
-    if (pressDuration > 130){
+    if (pressDuration > 200){
       dotDash = 1;
       morseString += "-";  // add dash to string
       Serial.print(" - ");
@@ -95,11 +153,14 @@ void loop(){
 currentMillis = millis();
 upDuration = currentMillis - endPressTime;
 
-    if (upDuration >= interval && charCheck == 1) {
-      Serial.print (" Code: ");
-      Serial.println (morseString);
+    if (upDuration >= letterInterval && charCheck == 1) {
       MorseLibrary (morseString); // call the function that outputs character
       charCheck = 0;  // reset this variable to 0 so that this if statement does not run again until next button release
       morseString = "";   // reset string used for collecting morse
-  }
+      morseChecked = 1;
+    }   
+    if (upDuration >= wordInterval && charCheck == 0 && morseChecked == 1 && ignoreSpace == 0 && timerState == 0) {
+       morseChecked = 0;
+       Keyboard.write(' ');
+    }
 }
