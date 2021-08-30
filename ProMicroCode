@@ -144,7 +144,7 @@ upDuration = currentMillis - endPressTime;
       morseString = "";   // reset string used for collecting morse
       morseChecked = 1;
     }   
-    if (upDuration >= wordInterval && charCheck == 0 && morseChecked == 1 && ignoreSpace == 0) {
+    if (upDuration >= wordInterval && charCheck == 0 && morseChecked == 1 && ignoreSpace == 0 && timerState == 0) {
        morseChecked = 0;
        // Serial.println ("space");
        Keyboard.write(' ');
