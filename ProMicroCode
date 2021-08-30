@@ -14,6 +14,7 @@ byte charCheck = 0;
 byte morseChecked = 0;
 byte dotDash;
 byte timerState;
+byte heldCommand = 0;
 const long letterInterval = 700;  // interval microseconds at which to evaluate morse into alphabet after button up
 const long wordInterval = 4000;  // interval microseconds at which time a space will be added
  
@@ -61,7 +62,7 @@ void MorseLibrary(String& a){
   if (a == "----.") output = '9';
   if (a == "----"){
       output = KEY_BACKSPACE;
-      ignoreSpace = 1;
+      ignoreSpace = 1;    // no space character sent after backspace
   }
   if (a == ".-.-.-")      output = '.';
   if (a == "-.-.--")      output = '!';
@@ -97,10 +98,24 @@ if (a == ".--.--")  output = '}';
 if (a == "-.---")  output = '<';
 if (a == "-.----")  output = '>';
 if (a == "..--")  output = ' ';
-//  if (a == ".-.-")  output = 13;             // Enter
-//  if (a == "....-.")  output = [shift]       // Shift
+if (a == ".-.-"){  
+  Keyboard.write(KEY_RETURN);       // Enter
+  ignoreSpace = 1;                  // no space character sent after enter
+  return;                           // exit this function
+  }
+if (a == "....-."){
+  Keyboard.press(KEY_LEFT_SHIFT);   // Shift - .press will hold key
+  ignoreSpace = 1;                  // no space
+  heldCommand = 1;
+  return;
+  }
+
 Serial.println (output);
 Keyboard.write (output);
+  if (heldCommand == 1){            // release held key if done last cycle
+    Keyboard.releaseAll();
+    heldCommand = 0;
+  }                      
 }
 
 void setup(){
@@ -112,14 +127,14 @@ Keyboard.begin();
 void loop(){
   if (timerState == 0 && digitalRead(button) == LOW){ // button pressed
     startPressTime = millis();
-    // tone(piezo, 440);   // sends A440 to piezo speaker
+    tone(piezo, 840);   // sends A440 to piezo speaker
     timerState = 1;
     charCheck = 0;
     }
   
   if (timerState == 1 && digitalRead(button) == HIGH){ // button released
     endPressTime = millis();
-    // noTone(piezo);
+    noTone(piezo);
     pressDuration = endPressTime - startPressTime;
     if (pressDuration > 10 && pressDuration <= 200){
       dotDash = 0;
@@ -146,7 +161,6 @@ upDuration = currentMillis - endPressTime;
     }   
     if (upDuration >= wordInterval && charCheck == 0 && morseChecked == 1 && ignoreSpace == 0 && timerState == 0) {
        morseChecked = 0;
-       // Serial.println ("space");
        Keyboard.write(' ');
     }
 }
